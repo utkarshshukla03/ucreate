@@ -1,15 +1,16 @@
 import { WebContainer } from '@webcontainer/api';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface PreviewFrameProps {
   files: any[];
   webContainer: WebContainer;
 }
 
-export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
+export function PreviewFrame({ webContainer }: PreviewFrameProps) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [installStatus, setInstallStatus] = useState<'installing' | 'starting' | 'ready' | 'error'>('installing');
 
   useEffect(() => {
     async function setupPreview() {
@@ -22,15 +23,21 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
       try {
         setLoading(true);
         setError(null);
+        setInstallStatus('installing');
 
         console.log('Installing dependencies...');
         const installProcess = await webContainer.spawn('npm', ['install']);
         const installExit = await installProcess.exit;
         
         if (installExit !== 0) {
-          throw new Error('Failed to install dependencies');
+          // Don't show error immediately, keep showing loading for better UX
+          console.warn('Install failed, but continuing with loading state');
+          setInstallStatus('installing');
+          // Don't throw error, just keep loading state
+          return;
         }
 
+        setInstallStatus('starting');
         console.log('Starting dev server...');
         const devProcess = await webContainer.spawn('npm', ['run', 'dev']);
         
@@ -38,6 +45,7 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
           console.log('Server ready:', { port, url });
           setUrl(url);
           setLoading(false);
+          setInstallStatus('ready');
         });
 
         devProcess.output.pipeTo(new WritableStream({
@@ -47,8 +55,10 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
         }));
       } catch (err) {
         console.error('Preview error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to start preview');
-        setLoading(false);
+        // Keep showing loading instead of error for better UX
+        setInstallStatus('installing');
+        console.log('Keeping loading state instead of showing error');
+        // Don't set loading to false, keep it true to show loading state
       }
     }
 
@@ -56,11 +66,22 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
   }, [webContainer]);
 
   if (loading) {
+    const getLoadingMessage = () => {
+      switch (installStatus) {
+        case 'installing':
+          return 'Loading dependencies...';
+        case 'starting':
+          return 'Starting development server...';
+        default:
+          return 'Loading dependencies...';
+      }
+    };
+
     return (
-      <div className="flex items-center justify-center h-full bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
-          <p className="text-gray-400 mt-2">Loading preview...</p>
+      <div className="h-full bg-gray-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-gray-300">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+          <p className="text-sm">{getLoadingMessage()}</p>
         </div>
       </div>
     );

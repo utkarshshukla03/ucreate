@@ -69,8 +69,9 @@ app.post("/template", async (req, res) => {
     
     // Handle rate limiting specifically
     if (err.status === 429 || (err.response && err.response.status === 429)) {
-      return res.status(200).json({ 
-        message: "API rate limit reached. Using fallback template.", 
+      return res.status(429).json({ 
+        message: "API_RATE_LIMIT_EXCEEDED", 
+        userMessage: "Too many requests right now. Please wait a while and try again.",
         prompts: [
           BASE_PROMPT,
           `Here is an artifact that contains all files of the project visible to you.\nConsider the contents of ALL files in the project.\n\n${reactBasePrompt}\n\nHere is a list of files that exist on the file system but are not being shown to you:\n\n  - .gitignore\n  - package-lock.json\n`,
@@ -148,8 +149,9 @@ app.post("/chat", async (req, res) => {
     
     // Handle rate limiting specifically
     if (err.status === 429 || (err.response && err.response.status === 429)) {
-      return res.status(200).json({
-        message: "API rate limit reached. Using fallback response.",
+      return res.status(429).json({
+        message: "API_RATE_LIMIT_EXCEEDED",
+        userMessage: "Too many requests right now. Please wait a while and try again.",
         response: `<boltArtifact id="rate-limit-fallback" title="Rate Limit Reached">
           <boltAction type="file" filePath="/src/App.tsx">
             import React from 'react';
@@ -161,38 +163,9 @@ app.post("/chat", async (req, res) => {
                   <header className="App-header">
                     <h1>My Portfolio</h1>
                     <p>Welcome to my personal website!</p>
-                    <nav>
-                      <a href="#about">About</a>
-                      <a href="#projects">Projects</a>
-                      <a href="#contact">Contact</a>
-                    </nav>
                   </header>
-                  
                   <main>
-                    <section id="about">
-                      <h2>About Me</h2>
-                      <p>I'm a passionate developer creating amazing web experiences.</p>
-                    </section>
-                    
-                    <section id="projects">
-                      <h2>My Projects</h2>
-                      <div className="projects-grid">
-                        <div className="project-card">
-                          <h3>Project 1</h3>
-                          <p>A modern web application built with React.</p>
-                        </div>
-                        <div className="project-card">
-                          <h3>Project 2</h3>
-                          <p>An interactive dashboard with real-time data.</p>
-                        </div>
-                      </div>
-                    </section>
-                    
-                    <section id="contact">
-                      <h2>Contact Me</h2>
-                      <p>Feel free to reach out for collaborations!</p>
-                      <p>Email: contact@example.com</p>
-                    </section>
+                    <p>API rate limit reached. Please wait and try again.</p>
                   </main>
                 </div>
               );
@@ -200,89 +173,8 @@ app.post("/chat", async (req, res) => {
 
             export default App;
           </boltAction>
-          
-          <boltAction type="file" filePath="/src/App.css">
-            .App {
-              text-align: center;
-            }
-
-            .App-header {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              padding: 40px;
-              color: white;
-            }
-
-            .App-header h1 {
-              margin: 0 0 20px 0;
-              font-size: 2.5rem;
-            }
-
-            .App-header nav {
-              margin-top: 20px;
-            }
-
-            .App-header nav a {
-              color: white;
-              text-decoration: none;
-              margin: 0 20px;
-              font-weight: 500;
-              transition: opacity 0.3s;
-            }
-
-            .App-header nav a:hover {
-              opacity: 0.8;
-            }
-
-            main {
-              max-width: 1200px;
-              margin: 0 auto;
-              padding: 40px 20px;
-            }
-
-            section {
-              margin: 60px 0;
-              text-align: left;
-            }
-
-            h2 {
-              color: #333;
-              margin-bottom: 20px;
-              font-size: 2rem;
-            }
-
-            .projects-grid {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-              gap: 30px;
-              margin-top: 30px;
-            }
-
-            .project-card {
-              background: #f8f9fa;
-              padding: 30px;
-              border-radius: 10px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-              transition: transform 0.3s;
-            }
-
-            .project-card:hover {
-              transform: translateY(-5px);
-            }
-
-            .project-card h3 {
-              color: #667eea;
-              margin-bottom: 10px;
-            }
-
-            #contact {
-              text-align: center;
-              background: #f8f9fa;
-              padding: 40px;
-              border-radius: 10px;
-            }
-          </boltAction>
         </boltArtifact>`,
-        uiPrompts: [`<boltArtifact id="rate-limit-fallback" title="Portfolio Website (Fallback)">
+        uiPrompts: [`<boltArtifact id="rate-limit-fallback" title="Portfolio Website (Rate Limited)">
           <boltAction type="file" filePath="/src/App.tsx">
             import React from 'react';
             import './App.css';
@@ -295,7 +187,7 @@ app.post("/chat", async (req, res) => {
                     <p>Welcome to my personal website!</p>
                   </header>
                   <main>
-                    <p>API rate limit reached. This is a fallback template.</p>
+                    <p>API rate limit reached. Please wait and try again.</p>
                   </main>
                 </div>
               );
