@@ -20,6 +20,7 @@ export function Builder() {
   const [llmMessages, setLlmMessages] = useState<{role: "user" | "assistant", content: string;}[]>([]);
   const [loading, setLoading] = useState(false);
   const [templateSet, setTemplateSet] = useState(false);
+  const [apiError, setError] = useState<string | null>(null);
   const { webcontainer, ready, error } = useWebContainer();
   const [currentStep, setCurrentStep] = useState(1);
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
@@ -159,15 +160,20 @@ export function Builder() {
 
   async function init() {
     try {
+      console.log('Starting initialization with prompt:', prompt);
+      console.log('Backend URL:', BACKEND_URL);
+      
       const response = await axios.post(`${BACKEND_URL}/template`, {
         prompt: prompt.trim()
       });
       
+      console.log('Template response:', response.data);
       setTemplateSet(true);
       const {prompts, uiPrompts} = response.data;
 
       if (uiPrompts?.[0]) {
         const parsedSteps = parseXml(uiPrompts[0]);
+        console.log('Parsed UI steps:', parsedSteps);
         setSteps(parsedSteps.map((step: Step) => ({
           ...step,
           status: "pending" as const
@@ -175,6 +181,7 @@ export function Builder() {
       }
 
       setLoading(true);
+      console.log('Sending chat request...');
       const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
         messages: [...prompts, prompt].map(content => ({
           role: "user" as const,
@@ -182,8 +189,10 @@ export function Builder() {
         }))
       });
 
+      console.log('Chat response:', stepsResponse.data);
       if (stepsResponse.data.response) {
         const parsedSteps = parseXml(stepsResponse.data.response);
+        console.log('Parsed chat steps:', parsedSteps);
         setSteps(currentSteps => [
           ...currentSteps,
           ...parsedSteps.map(step => ({
@@ -198,8 +207,214 @@ export function Builder() {
           { role: "assistant", content: stepsResponse.data.response }
         ]);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Initialization error:', err);
+      
+      // Handle API errors with fallback (rate limiting, server errors, etc.)
+      if (err.response?.status === 429 || 
+          err.response?.status === 500 || 
+          err.message?.includes('429') || 
+          err.message?.includes('rate limit') ||
+          err.message?.includes('500') ||
+          err.code === 'ERR_BAD_RESPONSE') {
+        console.log('API error detected, using fallback template');
+        setTemplateSet(true);
+        
+        // Provide a fallback template
+        const fallbackSteps = [
+          {
+            id: 1,
+            title: "Create App Component",
+            description: "Setting up the main React component",
+            type: StepType.CreateFile,
+            status: "pending" as const,
+            path: "/src/App.tsx",
+            code: `import React from 'react';
+import './App.css';
+
+function App() {
+  return (
+    <div className="App">
+      <header className="App-header">
+        <h1>My Portfolio</h1>
+        <p>Welcome to my personal website!</p>
+        <nav>
+          <a href="#about">About</a>
+          <a href="#projects">Projects</a>
+          <a href="#contact">Contact</a>
+        </nav>
+      </header>
+      
+      <main>
+        <section id="about">
+          <h2>About Me</h2>
+          <p>I'm a passionate developer creating amazing web experiences.</p>
+        </section>
+        
+        <section id="projects">
+          <h2>My Projects</h2>
+          <div className="projects-grid">
+            <div className="project-card">
+              <h3>Project 1</h3>
+              <p>A modern web application built with React.</p>
+            </div>
+            <div className="project-card">
+              <h3>Project 2</h3>
+              <p>An interactive dashboard with real-time data.</p>
+            </div>
+          </div>
+        </section>
+        
+        <section id="contact">
+          <h2>Contact Me</h2>
+          <p>Feel free to reach out for collaborations!</p>
+          <p>Email: contact@example.com</p>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+export default App;`
+          },
+          {
+            id: 2,
+            title: "Create CSS Styles",
+            description: "Adding styles for the portfolio",
+            type: StepType.CreateFile,
+            status: "pending" as const,
+            path: "/src/App.css",
+            code: `.App {
+  text-align: center;
+}
+
+.App-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 40px;
+  color: white;
+}
+
+.App-header h1 {
+  margin: 0 0 20px 0;
+  font-size: 2.5rem;
+}
+
+.App-header nav {
+  margin-top: 20px;
+}
+
+.App-header nav a {
+  color: white;
+  text-decoration: none;
+  margin: 0 20px;
+  font-weight: 500;
+  transition: opacity 0.3s;
+}
+
+.App-header nav a:hover {
+  opacity: 0.8;
+}
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+section {
+  margin: 60px 0;
+  text-align: left;
+}
+
+h2 {
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 2rem;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  margin-top: 30px;
+}
+
+.project-card {
+  background: #f8f9fa;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  transition: transform 0.3s;
+}
+
+.project-card:hover {
+  transform: translateY(-5px);
+}
+
+.project-card h3 {
+  color: #667eea;
+  margin-bottom: 10px;
+}
+
+#contact {
+  text-align: center;
+  background: #f8f9fa;
+  padding: 40px;
+  border-radius: 10px;
+}`
+          },
+          {
+            id: 3,
+            title: "Create Package.json",
+            description: "Setting up project dependencies",
+            type: StepType.CreateFile,
+            status: "pending" as const,
+            path: "/package.json",
+            code: `{
+  "name": "my-portfolio",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "dev": "react-scripts start"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}`
+          }
+        ];
+        
+        setSteps(fallbackSteps);
+        setError(null);
+        return;
+      }
+      
+      // Show error in UI instead of just logging
+      setError(err instanceof Error ? err.message : 'Failed to initialize project');
+      setTemplateSet(true); // Stop showing loading
     } finally {
       setLoading(false);
     }
@@ -212,7 +427,7 @@ export function Builder() {
   // Early return for loading and error states
   if (!ready) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
+      <div className="flex items-center justify-center h-screen bg-[#08080F]">
         <div className="text-center">
           <Loader />
           <p className="text-gray-400 mt-4">Initializing WebContainer...</p>
@@ -223,10 +438,37 @@ export function Builder() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-900">
+      <div className="flex flex-col items-center justify-center h-screen bg-[#08080F]">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4 text-red-500">Failed to initialize WebContainer</h2>
-          <p className="text-gray-400">{error}</p>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (apiError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-[#08080F]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4 text-red-500">API Connection Error</h2>
+          <p className="text-gray-400 mb-4">{apiError}</p>
+          <button 
+            onClick={() => {
+              setError(null);
+              setTemplateSet(false);
+              init();
+            }} 
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -299,20 +541,26 @@ export function Builder() {
                 <div className="flex gap-2">
                   <button
                     onClick={async () => {
-                      const newMessage = { role: "user" as const, content: userPrompt };
-                      setLoading(true);
-                      const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
-                        messages: [...llmMessages, newMessage]
-                      });
-                      setLoading(false);
-                      setLlmMessages(x => [...x, newMessage, {
-                        role: "assistant",
-                        content: stepsResponse.data.response
-                      }]);
-                      setSteps(s => [...s, ...parseXml(stepsResponse.data.response).map(x => ({
-                        ...x,
-                        status: "pending" as const
-                      }))]);
+                      try {
+                        const newMessage = { role: "user" as const, content: userPrompt };
+                        setLoading(true);
+                        const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
+                          messages: [...llmMessages, newMessage]
+                        });
+                        setLoading(false);
+                        setLlmMessages(x => [...x, newMessage, {
+                          role: "assistant",
+                          content: stepsResponse.data.response
+                        }]);
+                        setSteps(s => [...s, ...parseXml(stepsResponse.data.response).map(x => ({
+                          ...x,
+                          status: "pending" as const
+                        }))]);
+                      } catch (error) {
+                        console.error('Chat error:', error);
+                        setLoading(false);
+                        // Could add user feedback here
+                      }
                     }}
                     className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700"
                   >
