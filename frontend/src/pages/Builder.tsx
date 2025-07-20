@@ -39,7 +39,7 @@ export function Builder() {
     let updateHappened = false;
 
     steps.filter(({status}) => status === "pending").forEach(step => {
-      console.log('Processing step:', step.title, 'Type:', step.type);
+      console.log('Processing step:', step.title, 'Type:', step.type, 'Path:', step.path);
       updateHappened = true;
       if (step?.type === StepType.CreateFile && step.path) {
         // Clean the path - remove leading slashes and normalize
@@ -50,10 +50,12 @@ export function Builder() {
         
         if (existingFileIndex >= 0) {
           // Update existing file
+          console.log('Updating existing file:', cleanPath);
           originalFiles[existingFileIndex].content = step.code || '';
         } else {
           // Create new file
           const fileName = cleanPath.split('/').pop() || cleanPath;
+          console.log('Creating new file:', cleanPath, 'with name:', fileName);
           originalFiles.push({
             name: fileName,
             type: 'file',
@@ -66,7 +68,7 @@ export function Builder() {
 
     if (updateHappened) {
       console.log('Files updated! New file count:', originalFiles.length);
-      console.log('Files created:', originalFiles.map(f => f.path));
+      console.log('Files created:', originalFiles.map(f => ({ path: f.path, hasContent: !!f.content })));
       setFiles(originalFiles);
       setSteps(currentSteps => currentSteps.map((step: Step) => ({
         ...step,
@@ -155,9 +157,13 @@ export function Builder() {
           setMountStatus('mounting');
           const mountStructure = createMountStructure(files);
           console.log('Mounting structure:', mountStructure);
+          console.log('Files being mounted:', Object.keys(mountStructure));
           
           await webcontainer.mount(mountStructure);
           console.log('Files mounted successfully');
+          
+          // Add a small delay to ensure files are fully written
+          await new Promise(resolve => setTimeout(resolve, 500));
           
           setMountStatus('mounted');
           console.log('Mount status: mounted');
@@ -3888,7 +3894,23 @@ export default defineConfig({
           {activeTab === 'code' ? (
             <CodeEditor file={selectedFile} />
           ) : (
-            <PreviewFrame webContainer={webcontainer!} files={files} />
+            webcontainer && mountStatus === 'mounted' ? (
+              <PreviewFrame webContainer={webcontainer} files={files} mountStatus={mountStatus} />
+            ) : (
+              <div className="h-full bg-gray-900 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4 text-gray-300">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                  <p className="text-sm">
+                    {mountStatus === 'mounting' ? 'Preparing preview...' : 
+                     mountStatus === 'error' ? 'Preview not available' : 
+                     'Initializing preview...'}
+                  </p>
+                  {showFallbackNotice && (
+                    <p className="text-xs text-amber-400">Using fallback portfolio template</p>
+                  )}
+                </div>
+              </div>
+            )
           )}
         </div>
       </div>

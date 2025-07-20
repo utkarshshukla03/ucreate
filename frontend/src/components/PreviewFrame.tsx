@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 interface PreviewFrameProps {
   files: any[];
   webContainer: WebContainer;
+  mountStatus?: 'pending' | 'mounting' | 'mounted' | 'error';
 }
 
-export function PreviewFrame({ webContainer }: PreviewFrameProps) {
+export function PreviewFrame({ webContainer, mountStatus = 'pending' }: PreviewFrameProps) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -17,6 +18,12 @@ export function PreviewFrame({ webContainer }: PreviewFrameProps) {
       if (!webContainer) {
         setError('WebContainer is not initialized');
         setLoading(false);
+        return;
+      }
+
+      // Only proceed if files are mounted
+      if (mountStatus !== 'mounted') {
+        console.log('Waiting for files to be mounted. Current status:', mountStatus);
         return;
       }
 
@@ -63,7 +70,7 @@ export function PreviewFrame({ webContainer }: PreviewFrameProps) {
     }
 
     setupPreview();
-  }, [webContainer]);
+  }, [webContainer, mountStatus]);
 
   if (loading) {
     const getLoadingMessage = () => {
