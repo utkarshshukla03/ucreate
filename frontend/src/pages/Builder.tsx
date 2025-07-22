@@ -11,6 +11,385 @@ import { parseXml } from '../steps';
 import { useWebContainer } from '../hooks/useWebContainer';
 import { Loader } from '../components/Loader';
 
+// Fallback content function
+const getFallbackContent = () => {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alex Johnson - Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+            color: #ffffff;
+            line-height: 1.6;
+        }
+        
+        .portfolio {
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            padding: 1rem 0;
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+        
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d4ff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+        
+        .nav-menu a {
+            color: #ffffff;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .nav-menu a:hover {
+            color: #00d4ff;
+        }
+        
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0 2rem;
+        }
+        
+        .hero-content {
+            max-width: 800px;
+        }
+        
+        .hero-title {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        
+        .highlight {
+            background: linear-gradient(45deg, #00d4ff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: #00d4ff;
+            margin-bottom: 1.5rem;
+        }
+        
+        .hero-description {
+            font-size: 1.1rem;
+            color: #cccccc;
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn-primary, .btn-secondary {
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #00d4ff, #ff00ff);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #00d4ff;
+            border: 2px solid #00d4ff;
+        }
+        
+        .btn-secondary:hover {
+            background: #00d4ff;
+            color: #000;
+            transform: translateY(-2px);
+        }
+        
+        .section {
+            padding: 5rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section-title {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            background: linear-gradient(45deg, #00d4ff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .about-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+        
+        .about-text {
+            font-size: 1.1rem;
+            color: #cccccc;
+            line-height: 1.8;
+        }
+        
+        .skills {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .skill {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s;
+        }
+        
+        .skill:hover {
+            transform: translateY(-5px);
+        }
+        
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .project-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-10px);
+        }
+        
+        .project-title {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: #00d4ff;
+        }
+        
+        .contact-form {
+            max-width: 600px;
+            margin: 0 auto;
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            margin-bottom: 0.5rem;
+            color: #00d4ff;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.5);
+            margin-top: 3rem;
+        }
+        
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .about-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-menu {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="portfolio">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <span class="logo-text">Portfolio</span>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="#home">Home</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#projects">Projects</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section id="home" class="hero">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    Hi, I'm <span class="highlight">Alex Johnson</span>
+                </h1>
+                <p class="hero-subtitle">Full Stack Developer & UI/UX Designer</p>
+                <p class="hero-description">
+                    I create beautiful, responsive web applications with modern technologies.
+                    Passionate about clean code and exceptional user experiences.
+                </p>
+                <div class="hero-buttons">
+                    <button class="btn-primary">View My Work</button>
+                    <button class="btn-secondary">Download CV</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="section">
+            <h2 class="section-title">About Me</h2>
+            <div class="about-content">
+                <div class="about-text">
+                    <p>With over 5 years of experience in web development, I specialize in creating modern, responsive applications using cutting-edge technologies. My passion lies in transforming ideas into digital reality through clean, efficient code and intuitive design.</p>
+                    <p>I believe in continuous learning and staying updated with the latest industry trends to deliver exceptional results that exceed expectations.</p>
+                </div>
+                <div class="skills">
+                    <div class="skill">React</div>
+                    <div class="skill">TypeScript</div>
+                    <div class="skill">Node.js</div>
+                    <div class="skill">Python</div>
+                    <div class="skill">MongoDB</div>
+                    <div class="skill">PostgreSQL</div>
+                    <div class="skill">AWS</div>
+                    <div class="skill">Docker</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Projects Section -->
+        <section id="projects" class="section">
+            <h2 class="section-title">Featured Projects</h2>
+            <div class="projects-grid">
+                <div class="project-card">
+                    <h3 class="project-title">E-Commerce Platform</h3>
+                    <p>A full-stack e-commerce solution built with React, Node.js, and MongoDB. Features include user authentication, payment integration, and admin dashboard.</p>
+                </div>
+                <div class="project-card">
+                    <h3 class="project-title">Task Management App</h3>
+                    <p>Collaborative task management application with real-time updates, drag-and-drop functionality, and team collaboration features.</p>
+                </div>
+                <div class="project-card">
+                    <h3 class="project-title">Weather Dashboard</h3>
+                    <p>Interactive weather dashboard with data visualization, location-based forecasts, and responsive design for all devices.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact" class="section">
+            <h2 class="section-title">Get In Touch</h2>
+            <form class="contact-form">
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="message">Message</label>
+                    <textarea id="message" name="message" rows="5" required></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Send Message</button>
+            </form>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 Alex Johnson. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>`;
+};
+
 export function Builder() {
   const location = useLocation();
   const { prompt } = location.state as { prompt: string };
@@ -19,7 +398,7 @@ export function Builder() {
   const [loading, setLoading] = useState(false);
   const [templateSet, setTemplateSet] = useState(false);
   const [apiError, setError] = useState<string | null>(null);
-  const { webcontainer, ready, error } = useWebContainer();
+  const { webcontainer, ready, error, timedOut } = useWebContainer();
   const [currentStep, setCurrentStep] = useState(1);
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
@@ -3624,7 +4003,25 @@ export default defineConfig({
   const nestedFiles = createNestedFileStructure(files);
 
   // Early return for loading and error states
-  if (!ready) {
+  
+  // Show fallback UI immediately for API errors or WebContainer timeout
+  if (apiError || timedOut) {
+    const fallbackContent = getFallbackContent();
+    return (
+      <div className="h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white">
+        <div className="h-full overflow-hidden">
+          <iframe 
+            srcDoc={fallbackContent}
+            className="w-full h-full border-0"
+            title="Fallback Portfolio"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Show WebContainer loading only when no errors and not timed out
+  if (!ready && !timedOut && !apiError) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#08080F]">
         <div className="text-center">
