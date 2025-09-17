@@ -481,53 +481,71 @@ export function Builder() {
       const createMountStructure = (files: FileItem[]): Record<string, any> => {
         const mountStructure: Record<string, any> = {};
         
-        // Helper function to ensure directories exist
-        const ensureDirectoryExists = (dirPath: string) => {
-          if (!dirPath || dirPath === '.') return;
+        // Helper function to sanitize file names for WebContainer
+        const sanitizeFileName = (fileName: string): string => {
+          return fileName
+            .replace(/[<>:"|?*]/g, '_') // Replace invalid characters
+            .replace(/\.d\.ts$/, '.ts') // Convert .d.ts to .ts to avoid declaration file issues
+            .replace(/\s+/g, '_') // Replace spaces with underscores
+            .trim();
+        };
+        
+        // Helper function to sanitize and normalize paths
+        const sanitizePath = (path: string): string => {
+          const cleanPath = path.replace(/^\/+/, ''); // Remove leading slashes
+          const parts = cleanPath.split('/');
+          const sanitizedParts = parts.map(part => sanitizeFileName(part));
+          return sanitizedParts.join('/');
+        };
+        
+        // Helper function to set nested structure
+        const setNestedStructure = (obj: any, pathParts: string[], content: string) => {
+          let current = obj;
           
-          const parts = dirPath.split('/');
-          let currentPath = '';
-          
-          for (const part of parts) {
-            if (!part) continue;
-            
-            if (currentPath) {
-              currentPath += '/' + part;
-            } else {
-              currentPath = part;
-            }
-            
-            if (!mountStructure[currentPath]) {
-              mountStructure[currentPath] = {
+          // Navigate through directories
+          for (let i = 0; i < pathParts.length - 1; i++) {
+            const part = pathParts[i];
+            if (!current[part]) {
+              current[part] = {
                 directory: {}
               };
             }
+            current = current[part].directory;
           }
+          
+          // Set the file content
+          const fileName = pathParts[pathParts.length - 1];
+          current[fileName] = {
+            file: {
+              contents: content
+            }
+          };
         };
         
-        // First pass: create all directories
-        files.forEach(file => {
-          const cleanPath = file.path.replace(/^\/+/, ''); // Remove leading slash
-          if (file.type === 'file') {
-            const dirPath = cleanPath.split('/').slice(0, -1).join('/');
-            if (dirPath) {
-              ensureDirectoryExists(dirPath);
-            }
+        // Filter and sanitize files
+        const validFiles = files.filter(file => {
+          if (file.type !== 'file' || !file.content) return false;
+          
+          // Skip problematic files
+          const path = sanitizePath(file.path);
+          if (path.includes('vite-env.d.ts')) {
+            console.log('Skipping problematic file:', path);
+            return false;
           }
+          
+          return true;
         });
         
-        // Second pass: add all files
-        files.forEach(file => {
-          if (file.type === 'file') {
-            const cleanPath = file.path.replace(/^\/+/, ''); // Remove leading slash
-            mountStructure[cleanPath] = {
-              file: {
-                contents: file.content || ''
-              }
-            };
-          }
+        console.log('Valid files for mounting:', validFiles.map(f => sanitizePath(f.path)));
+        
+        // Build nested structure
+        validFiles.forEach(file => {
+          const cleanPath = sanitizePath(file.path);
+          const pathParts = cleanPath.split('/');
+          setNestedStructure(mountStructure, pathParts, file.content || '');
         });
         
+        console.log('Mount structure created:', JSON.stringify(mountStructure, null, 2));
         return mountStructure;
       };
 
@@ -537,6 +555,27 @@ export function Builder() {
           const mountStructure = createMountStructure(files);
           console.log('Mounting structure:', mountStructure);
           console.log('Files being mounted:', Object.keys(mountStructure));
+          
+          // Validate mount structure before attempting to mount
+          const countFiles = (obj: any): number => {
+            let count = 0;
+            for (const key in obj) {
+              if (obj[key].file) {
+                count++;
+              } else if (obj[key].directory) {
+                count += countFiles(obj[key].directory);
+              }
+            }
+            return count;
+          };
+          
+          const fileCount = countFiles(mountStructure);
+          
+          if (fileCount === 0) {
+            console.warn('No valid files to mount, skipping mount operation');
+            setMountStatus('error');
+            return;
+          }
           
           await webcontainer.mount(mountStructure);
           console.log('Files mounted successfully');
@@ -548,9 +587,38 @@ export function Builder() {
           console.log('Mount status: mounted');
         } catch (err) {
           console.error('Mount error:', err);
-          setMountStatus('error');
-          console.log('Mount status: error');
-          // Don't fail completely, still allow preview to try loading
+          console.error('Error details:', {
+            message: err instanceof Error ? err.message : 'Unknown error',
+            stack: err instanceof Error ? err.stack : undefined,
+            files: files.map(f => ({ path: f.path, type: f.type, hasContent: !!f.content }))
+          });
+          
+          // Try a fallback mount with basic files only
+          try {
+            console.log('Attempting fallback mount with essential files only...');
+            const essentialFiles = files.filter(file => 
+              file.type === 'file' && 
+              file.content &&
+              !file.path.includes('.d.ts') &&
+              (file.path.endsWith('.html') || 
+               file.path.endsWith('.tsx') || 
+               file.path.endsWith('.jsx') || 
+               file.path.endsWith('.css') ||
+               file.path.endsWith('.js'))
+            );
+            
+            if (essentialFiles.length > 0) {
+              const fallbackStructure = createMountStructure(essentialFiles);
+              await webcontainer.mount(fallbackStructure);
+              console.log('Fallback mount successful');
+              setMountStatus('mounted');
+            } else {
+              setMountStatus('error');
+            }
+          } catch (fallbackErr) {
+            console.error('Fallback mount also failed:', fallbackErr);
+            setMountStatus('error');
+          }
         }
       };
 
@@ -4329,3 +4397,5 @@ export default defineConfig({
     </div>
   );
 }
+
+export default Builder;
